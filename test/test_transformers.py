@@ -876,10 +876,10 @@ class TestTransformers(NNTestCase):
     @unittest.skipIf(
         not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Platform does not supposrt pre-SM80 hardware"
     )
-    def test_math_backend_high_precision(self):
-        xq = torch.rand([1, 128, 2, 80], device="cuda", dtype=torch.bfloat16) * 5
-        xk = torch.rand([1, 128, 2, 80], device="cuda", dtype=torch.bfloat16) * 5
-        xv = torch.randn([1, 128, 2, 80], device="cuda", dtype=torch.bfloat16)
+    def test_math_backend_high_precision(self, device):
+        xq = torch.rand([1, 128, 2, 80], device=device, dtype=torch.bfloat16) * 5
+        xk = torch.rand([1, 128, 2, 80], device=device, dtype=torch.bfloat16) * 5
+        xv = torch.randn([1, 128, 2, 80], device=device, dtype=torch.bfloat16)
         mask = None
 
         def scaled_dot_product_attention(
