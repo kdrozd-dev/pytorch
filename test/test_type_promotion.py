@@ -1185,7 +1185,7 @@ class TestTypePromotion(TestCase):
 
 
 
-instantiate_device_type_tests(TestTypePromotion, globals())
+instantiate_device_type_tests(TestTypePromotion, globals(), allow_xpu=True)
 
 if __name__ == '__main__':
     run_tests()

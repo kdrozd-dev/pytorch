@@ -1789,7 +1789,7 @@ class TestUnaryUfuncs(TestCase):
         self.assertEqual(out[: size_inp // 4], sorted[: size_inp // 4])
         self.assertEqual(
             out[size_inp // 4 :],
-            torch.tensor(10, device="cuda").expand_as(out[size_inp // 4 :]),
+            torch.tensor(10, device=device).expand_as(out[size_inp // 4 :]),
         )
         # correct fill for 2d
         x = x.view(2, size_inp // 2)
@@ -1799,7 +1799,7 @@ class TestUnaryUfuncs(TestCase):
         self.assertEqual(ref, res[: size_inp // 2])
         self.assertEqual(
             res[size_inp // 2 :],
-            torch.tensor(-1, device="cuda").expand_as(res[size_inp // 2 :]),
+            torch.tensor(-1, device=device).expand_as(res[size_inp // 2 :]),
         )
 
     # TODO: rationalize with exp OpInfo
@@ -1938,7 +1938,7 @@ class TestUnaryUfuncs(TestCase):
         self.assertEqual(y.cpu().view(torch.uint8), ref.view(torch.uint8))
 
 
-instantiate_device_type_tests(TestUnaryUfuncs, globals())
+instantiate_device_type_tests(TestUnaryUfuncs, globals(), allow_xpu=True)
 
 if __name__ == "__main__":
     run_tests()

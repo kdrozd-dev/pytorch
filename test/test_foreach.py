@@ -1882,7 +1882,7 @@ def check_autodiff_sample(op, sample, dtype, is_inplace):
     return True, ""
 
 
-instantiate_device_type_tests(TestForeach, globals())
+instantiate_device_type_tests(TestForeach, globals(), allow_xpu=True)
 
 
 if __name__ == "__main__":

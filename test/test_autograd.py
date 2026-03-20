@@ -15679,7 +15679,7 @@ class TestAutogradMultipleDispatch(TestCase):
             )
 
     @onlyCUDA
-    def test_backward_single_threaded(self):
+    def test_backward_single_threaded(self, device):
         threads_eq = None
 
         class TestFn(Function):
@@ -15695,7 +15695,7 @@ class TestAutogradMultipleDispatch(TestCase):
                 threads_eq = ctx.tid == threading.get_ident()
                 return gO, None
 
-        inp = torch.rand(10, device="cuda", requires_grad=True)
+        inp = torch.rand(10, device=device, requires_grad=True)
 
         with torch.autograd.set_multithreading_enabled(False):
             TestFn.apply(inp, None).sum().backward()
@@ -15705,7 +15705,7 @@ class TestAutogradMultipleDispatch(TestCase):
         self.assertFalse(threads_eq)
 
     @onlyCUDA
-    def test_backward_tls_stash(self):
+    def test_backward_tls_stash(self, device):
         local = threading.local()
         local.my_obj = {}
         local.my_obj[10] = 10
@@ -15724,7 +15724,7 @@ class TestAutogradMultipleDispatch(TestCase):
                 torch._C._get_obj_in_tls("my_obj")[10] = 5
                 return gO, None
 
-        inp = torch.rand(10, device="cuda", requires_grad=True)
+        inp = torch.rand(10, device=device, requires_grad=True)
 
         TestFn.apply(inp, None).sum().backward()
         self.assertEqual(local.my_obj[10], 5)
@@ -15891,13 +15891,18 @@ from autograd.test_logging import TestAutogradLogging  # noqa: F401
 
 
 # e.g., TestAutogradDeviceTypeCPU and TestAutogradDeviceTypeCUDA
-instantiate_device_type_tests(TestAutogradDeviceType, globals(), except_for=None)
+instantiate_device_type_tests(
+    TestAutogradDeviceType, globals(), except_for=None, allow_xpu=True
+)
 
 instantiate_device_type_tests(
-    TestAutogradMultipleDispatch, globals(), only_for=("cpu", "cuda")
+    TestAutogradMultipleDispatch,
+    globals(),
+    only_for=("cpu", "cuda", "xpu"),
+    allow_xpu=True,
 )
 instantiate_device_type_tests(
-    TestAutogradStreamSynchronization, globals(), except_for=None
+    TestAutogradStreamSynchronization, globals(), except_for=None, allow_xpu=True
 )
 
 instantiate_parametrized_tests(TestAutograd)

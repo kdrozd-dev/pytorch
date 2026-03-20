@@ -426,11 +426,11 @@ class TestTorchDeviceType(TestCase):
         s0.resize_(10)
 
     @onlyCUDA
-    def test_module_share_memory(self):
+    def test_module_share_memory(self, device):
         # Test fix for issue #80733
         # See https://github.com/pytorch/pytorch/issues/80733
         model = torch.nn.Linear(3, 1)
-        _model_cuda = model.to('cuda')
+        _model_cuda = model.to(device)
         model.share_memory()
 
     @dtypes(torch.float32, torch.complex64)
@@ -1773,7 +1773,7 @@ class TestTorchDeviceType(TestCase):
     @onlyCUDA
     @largeTensorTest('49GB')
     def test_cumsum_64bit_indexing(self, device):
-        b = torch.ones(2 * 4096 * 8, 100000, dtype=torch.float, device='cuda')
+        b = torch.ones(2 * 4096 * 8, 100000, dtype=torch.float, device=device)
         b /= 100000
         d = b.cumsum(dim=-1)
         chunk = 2**30 // b.shape[-1]
@@ -10992,11 +10992,11 @@ class TestTensorDeviceOps(TestCase):
 # Note: test generation must be done at file scope, not within main, or
 # pytest will fail.
 add_neg_dim_tests()
-instantiate_device_type_tests(TestViewOps, globals())
+instantiate_device_type_tests(TestViewOps, globals(), allow_xpu=True)
 instantiate_device_type_tests(TestVitalSignsCuda, globals())
-instantiate_device_type_tests(TestTensorDeviceOps, globals())
-instantiate_device_type_tests(TestTorchDeviceType, globals())
-instantiate_device_type_tests(TestDevicePrecision, globals(), except_for='cpu')
+instantiate_device_type_tests(TestTensorDeviceOps, globals(), allow_xpu=True)
+instantiate_device_type_tests(TestTorchDeviceType, globals(), allow_xpu=True)
+instantiate_device_type_tests(TestDevicePrecision, globals(), except_for='cpu', allow_xpu=True)
 
 if __name__ == '__main__':
     TestCase._default_dtype_check_enabled = True

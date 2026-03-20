@@ -876,10 +876,10 @@ class TestTransformers(NNTestCase):
     @unittest.skipIf(
         not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Platform does not supposrt pre-SM80 hardware"
     )
-    def test_math_backend_high_precision(self):
-        xq = torch.rand([1, 128, 2, 80], device="cuda", dtype=torch.bfloat16) * 5
-        xk = torch.rand([1, 128, 2, 80], device="cuda", dtype=torch.bfloat16) * 5
-        xv = torch.randn([1, 128, 2, 80], device="cuda", dtype=torch.bfloat16)
+    def test_math_backend_high_precision(self, device):
+        xq = torch.rand([1, 128, 2, 80], device=device, dtype=torch.bfloat16) * 5
+        xk = torch.rand([1, 128, 2, 80], device=device, dtype=torch.bfloat16) * 5
+        xv = torch.randn([1, 128, 2, 80], device=device, dtype=torch.bfloat16)
         mask = None
 
         def scaled_dot_product_attention(
@@ -913,7 +913,7 @@ class TestTransformers(NNTestCase):
     @onlyCUDA
     @parametrize("nb_heads", [1, 8])
     @parametrize("bias", [True, False])
-    def test_mha_native_args(self, nb_heads, bias):
+    def test_mha_native_args(self, device, nb_heads, bias):
 
         B, L, F = 8, 100, 128
         batch_first = True
@@ -925,18 +925,18 @@ class TestTransformers(NNTestCase):
             num_heads=nb_heads,
             batch_first=batch_first,
             bias=bias
-        ).cuda()
+        ).to(device)
         mha.eval()
 
         ctx = torch.no_grad if fast_path else contextlib.nullcontext
         with ctx():
-            x = torch.randn(B, L, F).cuda()
+            x = torch.randn(B, L, F, device=device)
             if not batch_first:
                 x = x.transpose(0, 1)
 
             pad_mask = None
             if use_pad_mask:
-                pad_mask = torch.zeros((B, L), dtype=torch.bool).cuda()
+                pad_mask = torch.zeros((B, L), dtype=torch.bool, device=device)
 
             mha(query=x, key=x, value=x, key_padding_mask=pad_mask)
 
@@ -1450,13 +1450,13 @@ class TestTransformers(NNTestCase):
                             qkv_f.size(1), device=device
                         )
                         _ = mha_f(qkv_f, qkv_f, qkv_f, attn_mask=mask, need_weights=False, is_causal=True)
-                        torch.cuda.synchronize()
+                        torch.accelerator.synchronize()
 
+    @onlyCUDA
     @unittest.skipIf(
         not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Platform does not supposrt fused SDPA or pre-SM80 hardware"
     )
-    def test_is_causal_gpu(self):
-        device = 'cuda'
+    def test_is_causal_gpu(self, device):
         self.is_causal_kernels([SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION], device)
 
     def test_script_mha_in_proj_weight_none(self):
@@ -1815,7 +1815,7 @@ class TestSDPAFailureModes(NNTestCase):
         size = SdpaShape(16, 16, 32, 32)
         make_tensor = partial(torch.rand, size, device=device, dtype=dtype)
         q, k, v = make_tensor(), make_tensor(), make_tensor()
-        with torch.autocast(device_type='cuda', dtype=torch.float16):
+        with torch.autocast(device_type=torch.device(device).type, dtype=torch.float16):
             with sdpa_kernel(backends=[SDPBackend.FLASH_ATTENTION]):
                 _ = torch.nn.functional.scaled_dot_product_attention(
                     q, k, v, None, 0.0, False)
@@ -1827,7 +1827,7 @@ class TestSDPAFailureModes(NNTestCase):
         size = SdpaShape(16, 16, 32, 32)
         make_tensor = partial(torch.rand, size, device=device, dtype=dtype)
         q, k, v = make_tensor(), make_tensor(), make_tensor()
-        with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+        with torch.autocast(device_type=torch.device(device).type, dtype=torch.bfloat16):
             with sdpa_kernel(backends=[SDPBackend.FLASH_ATTENTION]):
                 _ = torch.nn.functional.scaled_dot_product_attention(
                     q, k, v, None, 0.0, False)
@@ -1915,9 +1915,9 @@ class TestSDPAFailureModes(NNTestCase):
     @onlyCUDA
     @unittest.skipIf(not PLATFORM_SUPPORTS_FLASH_ATTENTION, "Does not support flash attention")
     def test_flash_atteention_large_bf16_nan_values(self, device):
-        query = torch.full((1, 1, 1, 64), 133120.0, dtype=torch.bfloat16, device="cuda")
-        key = torch.full((1, 1, 1, 64), 133120.0, dtype=torch.bfloat16, device="cuda")
-        value = torch.full((1, 1, 1, 64), 133120.0, dtype=torch.bfloat16, device="cuda")
+        query = torch.full((1, 1, 1, 64), 133120.0, dtype=torch.bfloat16, device=device)
+        key = torch.full((1, 1, 1, 64), 133120.0, dtype=torch.bfloat16, device=device)
+        value = torch.full((1, 1, 1, 64), 133120.0, dtype=torch.bfloat16, device=device)
 
         with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
             out = torch.nn.functional.scaled_dot_product_attention(query, key, value)
@@ -1993,11 +1993,11 @@ class TestSDPAFailureModes(NNTestCase):
 
     @onlyCUDA
     @unittest.skipIf(not PLATFORM_SUPPORTS_MEM_EFF_ATTENTION, "Does not support Efficient Attention")
-    def test_mem_eff_attention_fail_with_batch_size_geq_65536(self):
+    def test_mem_eff_attention_fail_with_batch_size_geq_65536(self, device):
         batch_size = 2**16
-        query = torch.rand([batch_size, 2, 2, 8], device='cuda', dtype=torch.float16, requires_grad=True)
-        key = torch.rand([batch_size, 2, 2, 8], device='cuda', dtype=torch.float16, requires_grad=True)
-        value = torch.rand([batch_size, 2, 2, 8], device='cuda', dtype=torch.float16, requires_grad=True)
+        query = torch.rand([batch_size, 2, 2, 8], device=device, dtype=torch.float16, requires_grad=True)
+        key = torch.rand([batch_size, 2, 2, 8], device=device, dtype=torch.float16, requires_grad=True)
+        value = torch.rand([batch_size, 2, 2, 8], device=device, dtype=torch.float16, requires_grad=True)
         q_cpu, k_cpu, v_cpu = (query.detach().cpu().requires_grad_(True),
                                key.detach().cpu().requires_grad_(True),
                                value.detach().cpu().requires_grad_(True))
@@ -2015,10 +2015,10 @@ class TestSDPAFailureModes(NNTestCase):
 
     @onlyCUDA
     @unittest.skipIf(not PLATFORM_SUPPORTS_MEM_EFF_ATTENTION, "Does not support Efficient Attention")
-    def test_mem_eff_attention_fail_with_batch_size_geq_65536_error(self):
-        query = torch.rand([2**16, 2, 2, 8], device='cuda', dtype=torch.float16)
-        key = torch.rand([2**16, 2, 2, 8], device='cuda', dtype=torch.float16)
-        value = torch.rand([2**16, 2, 2, 8], device='cuda', dtype=torch.float16)
+    def test_mem_eff_attention_fail_with_batch_size_geq_65536_error(self, device):
+        query = torch.rand([2**16, 2, 2, 8], device=device, dtype=torch.float16)
+        key = torch.rand([2**16, 2, 2, 8], device=device, dtype=torch.float16)
+        value = torch.rand([2**16, 2, 2, 8], device=device, dtype=torch.float16)
         error_str = (r"Efficient attention cannot produce valid seed and offset outputs when "
                      r"the batch size exceeds \(65535\)\.")
         with self.assertRaisesRegex(RuntimeError, error_str):
@@ -2028,10 +2028,10 @@ class TestSDPAFailureModes(NNTestCase):
 
     @onlyCUDA
     @unittest.skipIf(not PLATFORM_SUPPORTS_MEM_EFF_ATTENTION, "Does not support Efficient Attention")
-    def test_mem_eff_attention_backward_requires_bias_when_bias_grad(self):
-        q = torch.rand(2, 8, 256, 64, device="cuda", dtype=torch.float16, requires_grad=True)
-        k = torch.rand(2, 8, 256, 64, device="cuda", dtype=torch.float16, requires_grad=True)
-        v = torch.rand(2, 8, 256, 64, device="cuda", dtype=torch.float16, requires_grad=True)
+    def test_mem_eff_attention_backward_requires_bias_when_bias_grad(self, device):
+        q = torch.rand(2, 8, 256, 64, device=device, dtype=torch.float16, requires_grad=True)
+        k = torch.rand(2, 8, 256, 64, device=device, dtype=torch.float16, requires_grad=True)
+        v = torch.rand(2, 8, 256, 64, device=device, dtype=torch.float16, requires_grad=True)
         out, lse, philox_seed, philox_offset = torch.ops.aten._scaled_dot_product_efficient_attention.default(
             q, k, v, None, True
         )
@@ -2057,8 +2057,7 @@ class TestSDPAFailureModes(NNTestCase):
     @largeTensorTest("15GB", "cuda")
     @onlyCUDA
     @unittest.skipIf(not PLATFORM_SUPPORTS_MEM_EFF_ATTENTION, "Does not support Efficient Attention")
-    def test_mem_eff_attention_large_seq_len_uniform_attention(self):
-        device = torch.device("cuda")
+    def test_mem_eff_attention_large_seq_len_uniform_attention(self, device):
         dtype = torch.bfloat16
 
         num_queries = 49999
@@ -5150,8 +5149,8 @@ else:
 if TEST_XPU:
     device_types += ("xpu", )
 
-instantiate_device_type_tests(TestTransformers, globals(), only_for=device_types)
-instantiate_device_type_tests(TestSDPAFailureModes, globals(), only_for=device_types, allow_mps=True)
+instantiate_device_type_tests(TestTransformers, globals(), only_for=device_types, allow_xpu=True)
+instantiate_device_type_tests(TestSDPAFailureModes, globals(), only_for=device_types, allow_mps=True, allow_xpu=True)
 instantiate_device_type_tests(TestSDPA, globals(), only_for=device_types, allow_mps=True, allow_xpu=True)
 instantiate_device_type_tests(TestSDPACudaOnly, globals(), only_for=("cuda"))
 instantiate_device_type_tests(TestSDPACpuOnly, globals(), only_for=("cpu"))

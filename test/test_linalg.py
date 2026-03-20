@@ -6564,9 +6564,9 @@ class TestLinalg(TestCase):
     @onlyCUDA
     @largeTensorTest('16GB', device='cuda')
     def test_large_bmm_mm_backward(self, device):
-        A = torch.randn([1024, 2, 1024], device="cuda").mT.contiguous().mT
-        B = torch.randn([1024, 65536], device="cuda", requires_grad=True)
-        G = torch.randn([1024, 2, 65536], device="cuda")
+        A = torch.randn([1024, 2, 1024], device=device).mT.contiguous().mT
+        B = torch.randn([1024, 65536], device=device, requires_grad=True)
+        G = torch.randn([1024, 2, 65536], device=device)
 
         # Should not create an intermediary tensor of size [1024, 1024, 65536] (256GB of memory) and OOM
         (A @ B).backward(G)
@@ -6575,9 +6575,9 @@ class TestLinalg(TestCase):
     @onlyCUDA
     @largeTensorTest('16GB', device='cuda')
     def test_large_bmm_backward(self, device):
-        A = torch.randn([1024, 2, 1024], device="cuda").mT.contiguous().mT
-        B = torch.randn([1, 1024, 65536], device="cuda", requires_grad=True)
-        G = torch.randn([1024, 2, 65536], device="cuda")
+        A = torch.randn([1024, 2, 1024], device=device).mT.contiguous().mT
+        B = torch.randn([1, 1024, 65536], device=device, requires_grad=True)
+        G = torch.randn([1024, 2, 65536], device=device)
 
         # Should not create an intermediary tensor of size [1024, 1024, 65536] (256GB of memory) and OOM
         (A @ B).backward(G)
@@ -10495,7 +10495,7 @@ scipy_lobpcg  | {eq_err_scipy:10.2e}  | {eq_err_general_scipy:10.2e}  | {iters2:
         out_cpu = torch.logaddexp(input=input_complex.cpu(), other=other_complex.cpu())
         self.assertEqual(out_gpu.cpu(), out_cpu)
 
-instantiate_device_type_tests(TestLinalg, globals())
+instantiate_device_type_tests(TestLinalg, globals(), allow_xpu=True)
 
 if __name__ == '__main__':
     TestCase._default_dtype_check_enabled = True

@@ -861,7 +861,7 @@ class TestShapeOps(TestCase):
             torch.ops.aten.unfold_backward(grad_in, input_sizes, 0, -1, 1)
 
 
-instantiate_device_type_tests(TestShapeOps, globals())
+instantiate_device_type_tests(TestShapeOps, globals(), allow_xpu=True)
 
 if __name__ == "__main__":
     run_tests()

@@ -1561,8 +1561,8 @@ class TestSparse(TestSparseBase):
                 a_list.append(self._gen_sparse(2, nnz, [dim_i, dim_j], dtype, device, coalesced)[0])
                 b_list.append(torch.randn([dim_j, dim_k], dtype=dtype, device=device))
 
-            a = torch.stack(a_list).cuda()
-            b = torch.stack(b_list).cuda()
+            a = torch.stack(a_list).to(device)
+            b = torch.stack(b_list).to(device)
             with DeterministicGuard(torch.are_deterministic_algorithms_enabled()):
                 torch.use_deterministic_algorithms(False)
                 ab_nondeterministic = torch.bmm(a, b)
@@ -1614,8 +1614,8 @@ class TestSparse(TestSparseBase):
     )
     @dtypes(torch.double)
     def test_bmm_windows_error(self, device, dtype):
-        a = torch.rand(2, 2, 2, dtype=dtype).to_sparse().cuda()
-        b = torch.rand(2, 2, 2, dtype=dtype).cuda()
+        a = torch.rand(2, 2, 2, dtype=dtype).to_sparse().to(device)
+        b = torch.rand(2, 2, 2, dtype=dtype).to(device)
         with self.assertRaisesRegex(
                 RuntimeError,
                 "bmm sparse-dense CUDA is not supported on Windows with cuda before 11.0"):
@@ -5802,14 +5802,14 @@ class TestSparseAny(TestCase):
             self.assertEqual(torch.view_as_real(torch.view_as_complex(xs)), xs)
 
 # e.g., TestSparseUnaryUfuncsCPU and TestSparseUnaryUfuncsCUDA
-instantiate_device_type_tests(TestSparseUnaryUfuncs, globals(), allow_mps=True, except_for='meta')
+instantiate_device_type_tests(TestSparseUnaryUfuncs, globals(), allow_mps=True, allow_xpu=True, except_for='meta')
 
-instantiate_device_type_tests(TestSparseMaskedReductions, globals(), except_for='meta')
+instantiate_device_type_tests(TestSparseMaskedReductions, globals(), allow_xpu=True, except_for='meta')
 
 # e.g., TestSparseCPU and TestSparseCUDA
-instantiate_device_type_tests(TestSparse, globals(), allow_mps=True, except_for='meta')
+instantiate_device_type_tests(TestSparse, globals(), allow_mps=True, allow_xpu=True, except_for='meta')
 
-instantiate_device_type_tests(TestSparseAny, globals(), except_for='meta')
+instantiate_device_type_tests(TestSparseAny, globals(), allow_xpu=True, except_for='meta')
 
 instantiate_parametrized_tests(TestSparseMeta)
 
