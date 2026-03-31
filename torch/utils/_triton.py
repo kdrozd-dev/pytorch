@@ -1,6 +1,8 @@
 import functools
 import hashlib
 import os
+import platform
+import shutil
 from typing import Any
 
 
@@ -146,8 +148,27 @@ def has_triton_stable_tma_api() -> bool:
 
 
 @functools.cache
+def _windows_can_build_triton() -> bool:
+    cc = os.environ.get("CC")
+    if cc and shutil.which(cc):
+        return True
+    for compiler in ("cl", "gcc", "cc", "clang"):
+        if shutil.which(compiler):
+            return True
+    return False
+
+
+@functools.cache
 def has_triton() -> bool:
     if not has_triton_package():
+        return False
+
+    # On Windows, Triton needs a C compiler for kernel compilation.
+    # If none is found, Triton compilation will fail at runtime with
+    # "Failed to find C compiler".  Bail out early so that callers
+    # (e.g. is_compile_supported, HAS_TRITON) see Triton as unavailable
+    # and can fall back or skip gracefully.
+    if platform.system() == "Windows" and not _windows_can_build_triton():
         return False
 
     from torch._inductor.config import triton_disable_device_detection
