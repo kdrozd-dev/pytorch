@@ -27,6 +27,37 @@ endif()
 # ---[ Project and semantic versioning.
 project(Torch CXX C)
 
+# ---[ Windows long path check (see https://github.com/pytorch/pytorch/issues/134956)
+if(WIN32)
+  string(LENGTH "${CMAKE_BINARY_DIR}" _bin_dir_len)
+  if(_bin_dir_len GREATER 70)
+    execute_process(
+      COMMAND reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\FileSystem" /v LongPathsEnabled
+      OUTPUT_VARIABLE _long_path_reg_output
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE _long_path_reg_result
+    )
+    set(_long_paths_ok FALSE)
+    if(_long_path_reg_result EQUAL 0)
+      string(FIND "${_long_path_reg_output}" "0x1" _lp_pos)
+      if(NOT _lp_pos EQUAL -1)
+        set(_long_paths_ok TRUE)
+      endif()
+    endif()
+    if(NOT _long_paths_ok)
+      message(WARNING
+        "The build directory path is ${_bin_dir_len} characters long and Windows long path "
+        "support is not enabled.  Builds may fail with 'path too long' errors.\n"
+        "To fix, run as Administrator in PowerShell:\n"
+        "  Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\FileSystem' "
+        "-Name 'LongPathsEnabled' -Value 1\n"
+        "Then restart your terminal.  Alternatively, use a shorter source directory."
+      )
+    endif()
+  endif()
+endif()
+
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
   set(LINUX TRUE)
 else()
