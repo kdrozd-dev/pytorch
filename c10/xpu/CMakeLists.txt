@@ -17,6 +17,7 @@ configure_file(
 set(C10_XPU_SRCS
     PeerToPeerAccess.cpp
     XPUCachingAllocator.cpp
+    XPUException.cpp
     XPUFunctions.cpp
     XPUStream.cpp
     impl/XPUGuardImpl.cpp
