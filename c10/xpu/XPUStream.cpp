@@ -386,7 +386,7 @@ void syncStreamsOnDevice(DeviceIndex device) {
   // For each device, we have kStreamsPerPool (32) reserved queues per priority.
   for (const auto p : c10::irange(max_compile_time_stream_priorities)) {
     for (const auto i : c10::irange(kStreamsPerPool)) {
-      streams[device][p][i]->wait();
+      C10_XPU_CHECK(streams[device][p][i]->wait_and_throw());
     }
   }
   const c10::impl::PyInterpreter* interp = c10::impl::GPUTrace::get_trace();

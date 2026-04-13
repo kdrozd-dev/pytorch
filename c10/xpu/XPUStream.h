@@ -2,6 +2,7 @@
 
 #include <c10/core/Stream.h>
 #include <c10/core/impl/GPUTrace.h>
+#include <c10/xpu/XPUException.h>
 #include <c10/xpu/XPUFunctions.h>
 
 namespace c10::xpu {
@@ -101,7 +102,7 @@ class C10_XPU_API XPUStream {
   /// Performs a blocking wait for the completion of all enqueued tasks in this
   /// stream.
   void synchronize() const {
-    queue().wait_and_throw();
+    C10_XPU_CHECK(queue().wait_and_throw());
     const c10::impl::PyInterpreter* interp = c10::impl::GPUTrace::get_trace();
     if (C10_UNLIKELY(interp)) {
       (*interp)->trace_gpu_stream_synchronization(
