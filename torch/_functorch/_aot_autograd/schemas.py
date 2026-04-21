@@ -529,6 +529,8 @@ class ViewAndMutationMeta:
 
     graphsafe_rng_state_index: int | None = None
 
+    rng_device_type: str | None = None
+
     # Stream indices for mutated inputs in the epilogue
     # Maps from index in mutated_inp_runtime_indices to the stream index that last touched
     # the storage of the tensor that will be copied back into the original input
@@ -834,6 +836,7 @@ class ViewAndMutationMeta:
                 for x, y in zip(self.traced_tangents, other.traced_tangents)
             )
             and self.num_backward_tokens == other.num_backward_tokens
+            and self.rng_device_type == other.rng_device_type
         )
 
 
