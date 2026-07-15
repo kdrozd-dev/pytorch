@@ -1439,6 +1439,13 @@ IS_X86 = platform.machine() in ('x86_64', 'i386')
 IS_ARM64 = platform.machine() in ('arm64', 'aarch64', 'ARM64')
 IS_S390X = platform.machine() == "s390x"
 IS_AVX512_VNNI_SUPPORTED = torch.cpu.get_capabilities().get("avx512_vnni", False)
+IS_AVX2_VNNI_2  = (
+    torch.cpu.get_capabilities().get("avx2", False)
+    and torch.cpu.get_capabilities().get("avx_vnni", False)
+    and torch.cpu.get_capabilities().get("avx_vnni_int8", False)
+    and torch.cpu.get_capabilities().get("avx_ne_convert", False)
+    and not torch.cpu.get_capabilities().get("avx512_f", False)
+)
 IS_CPU_EXT_SVE_SUPPORTED = torch.cpu.get_capabilities().get("sve", False)
 IS_CPU_CAPABILITY_SVE = torch._C._get_cpu_capability() in ("SVE128", "SVE256")
 IS_CPU_CAPABILITY_SVE256 = torch._C._get_cpu_capability() == "SVE256"

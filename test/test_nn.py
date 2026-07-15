@@ -38,6 +38,7 @@ from torch.testing._internal.common_utils import dtype_name, freeze_rng_state, r
     skipIfNoLapack, skipIfRocm, skipIfRocmVersionLessThan, TEST_NUMPY, TEST_SCIPY, TEST_WITH_CROSSREF, TEST_WITH_ROCM, TEST_MULTIACCELERATOR, \
     download_file, get_function_arglist, load_tests, skipIfMPS, MACOS_VERSION, \
     IS_PPC, IS_ARM64, IS_MACOS, IS_WINDOWS, IS_CPU_CAPABILITY_SVE, IS_CPU_EXT_SVE_SUPPORTED, xfailIf, \
+    IS_AVX2_VNNI_2, \
     parametrize as parametrize_test, subtest, instantiate_parametrized_tests, \
     skipIfTorchDynamo, gcIfJetson, set_default_dtype, skipIfNoCuteDSL, with_ieee_matmul_precision
 from torch.testing._internal.common_cuda import TEST_CUDA, TEST_MULTIGPU, TEST_CUDNN, \
@@ -47,7 +48,7 @@ from torch.testing._internal.common_nn import NNTestCase, NewModuleTest, Criteri
     ctcloss_reference, get_new_module_tests, single_batch_reference_fn, _test_bfloat16_ops, _test_module_empty_input
 from torch.testing._internal.common_device_type import dtypesIfMPS, instantiate_device_type_tests, dtypes, \
     dtypesIfCUDA, precisionOverride, onlyCUDA, onlyCPU, onlyAccelerator, \
-    skipCUDAIf, skipMPSIf, skipMPS, \
+    skipCUDAIf, skipMPSIf, skipMPS, skipCPUIf, \
     onlyNativeDeviceTypes, deviceCountAtLeast, largeTensorTest, expectedFailureMeta, expectedFailureMPS, \
     skipMeta, get_all_device_types
 from torch.testing._internal.common_modules import module_inputs_torch_nn_LinearCrossEntropyLoss
@@ -261,6 +262,9 @@ class TestNN(NNTestCase):
 
     def test_no_grad(self):
         for dtype in [torch.bfloat16, torch.float, torch.double]:
+            # oneDNN does not support bf16 backward on the avx2_vnni_2 CPU ISA
+            if dtype == torch.bfloat16 and IS_AVX2_VNNI_2:
+                continue
             module = nn.Conv2d(2, 5, kernel_size=3, padding=1).to(dtype)
             input = torch.randn(1, 2, 10, 10).to(dtype)
             x = input
@@ -12268,6 +12272,10 @@ class TestNNDeviceType(NNTestCase):
 
     @onlyCPU
     @dtypes(torch.bfloat16, torch.float16)
+    @skipCPUIf(
+        IS_AVX2_VNNI_2,
+        "oneDNN does not support bf16/fp16 backward on the avx2_vnni_2 CPU ISA",
+    )
     def test_activations_bfloat16_half_cpu(self, device, dtype):
         def test_helper(fn, device, inp_dims, prec=None):
             torch.manual_seed(37)
