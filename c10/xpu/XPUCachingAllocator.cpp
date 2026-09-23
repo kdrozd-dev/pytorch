@@ -1840,15 +1840,16 @@ class DeviceCachingAllocator {
   std::pair<size_t, size_t> getMemoryInfo() {
     const auto& device = c10::xpu::get_raw_device(device_index);
     const size_t total = device.get_info<sycl::info::device::global_mem_size>();
-    TORCH_CHECK(
-        device.has(sycl::aspect::ext_intel_free_memory),
-        "The device (",
-        device.get_info<sycl::info::device::name>(),
-        ") doesn't support querying the available free memory. ",
-        "You can file an issue at https://github.com/pytorch/pytorch/issues ",
-        "to help us prioritize its implementation.");
-    const size_t free =
-        device.get_info<sycl::ext::intel::info::device::free_memory>();
+    // Estimate the available device memory when the SYCL runtime does not
+    // support the corresponding aspect (ext_intel_free_memory), consistent
+    // with the estimate used for the OOM error message in malloc() above.
+    // TODO: Remove the aspect check once the SYCL runtime bug is fixed on
+    // affected devices.
+    size_t free = total -
+        stats.reserved_bytes[static_cast<size_t>(StatType::AGGREGATE)].current;
+    if (device.has(sycl::aspect::ext_intel_free_memory)) {
+      free = device.get_info<sycl::ext::intel::info::device::free_memory>();
+    }
     return {free, total};
   }
 
