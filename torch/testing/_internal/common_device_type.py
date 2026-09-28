@@ -1834,7 +1834,12 @@ def _has_sufficient_memory(device, size):
             ) >= size
 
         if device_type == "xpu":
-            return torch.xpu.memory.mem_get_info(device_)[0] >= size
+            try:
+                return torch.xpu.memory.mem_get_info(device_)[0] >= size
+            except RuntimeError:
+                # mem_get_info raises when the device can't report free
+                # memory; treat as insufficient instead of crashing the test.
+                return False
 
         if device_type == "mtia":
             # MTIA has no mem_get_info; the dram stats dict exposes free_bytes
